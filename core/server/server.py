@@ -1,7 +1,7 @@
 from abc import ABC
-from core.server.coordinatorbase import CoordinatorBase
-from core.server.aggregatorbase import AggregatorBase, MasterAggregatorBase
-from core.server.selectorbase import SelectorBase
+from core.server.coordinator import CoordinatorBase
+from core.server.aggregator import AggregatorBase, MasterAggregatorBase
+from core.server.selector import SelectorBase
 
 class ServerBase(ABC):
   """
