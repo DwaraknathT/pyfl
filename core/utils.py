@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+from collections import defaultdict
+
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -72,3 +74,26 @@ def get_data(args):
     args.num_classes = 100
 
   return trainloader, testloader
+
+
+def make_data_partition(args):
+  """
+  Make non-iid, iid partition of a given dataset based on
+  number of workers
+  :param args: Argument object
+  :return: Dictionary with dataset partitions for each worker
+  """
+  trainloader, testloader = get_data(args)
+  device_specific_dataset = defaultdict(list)
+  num_batches = len(trainloader)
+  num_batches_per_device = num_batches // args.num_devices
+  device_id = 0
+  for batch_idx, (data, target) in enumerate(trainloader):
+    if batch_idx % num_batches_per_device == 0:
+      device_id += 1
+    device_specific_dataset[device_id].append(data)
+
+  device_specific_dataset = {key: iter(device_specific_dataset[key])
+                             for key in device_specific_dataset.keys()}
+
+  return device_specific_dataset

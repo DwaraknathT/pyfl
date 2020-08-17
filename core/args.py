@@ -9,13 +9,13 @@ parser.add_argument(
 parser.add_argument(
   '--num_classes', default=10, type=int, help='Number of classes')
 parser.add_argument(
-  '--batch_size', default=32, type=int, help='Batch size')
+  '--batch_size', default=100, type=int, help='Batch size')
 
 # FL Parameteres
 parser.add_argument(
   '--iid_partion', default=False, type=bool, help='Do a non-iid partition of the dataset')
 parser.add_argument(
-  '--num_devices', default=5, type=int, help='Number of devices')
+  '--num_devices', default=10, type=int, help='Number of devices')
 
 
 def get_args():
