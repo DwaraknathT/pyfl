@@ -83,11 +83,23 @@ class Device(DeviceBase):
     self.task_config = None
     self.updates = None
 
+  def send_message(self,
+                   sender,
+                   receiver,
+                   msg_class,
+                   msg_id):
+
+
   def ping_server(self, server_config):
     if self.device_config['ready']:
-      self.participate = send_message(server_config['server_id'], msg_class=0, msg_id=0)
+      self.participate = send_message(sender=self.device_config['device_id'],
+                                      receiver=server_config['server_id'],
+                                      msg_class=0,
+                                      msg_id=0)
     if self.participate:
-      self.task_config = send_message(server_config['server_id'], msg_class=1, msg_id=1)
+      self.task_config = send_message(server_config['server_id'],
+                                      msg_class=1,
+                                      msg_id=1)
       self.model = send_message(server_config['server_id'], msg_class=1, msg_id=0)
       self.execute_task(self.task_config, model)
       if self.device_config['task_status'] == 1:
