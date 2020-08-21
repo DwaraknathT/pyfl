@@ -1,12 +1,13 @@
 from abc import ABC
-from core.server.coordinator import Coordinator
-from core.server.aggregator import AggregatorBase, MasterAggregatorBase
+
 from core.server.selector import Selector
+
 
 class ServerBase(ABC):
   """
   A parameter server that holds all actors in the server space.
   """
+
   def __init__(self, **kwargs):
     """
     Server initialization
@@ -20,7 +21,7 @@ class ServerBase(ABC):
     raise NotImplementedError('Round not implemented')
 
 
-class Server(SelectorBase):
+class Server(ServerBase):
   """
   Server
   The server is the container that manages all instances of
@@ -36,22 +37,21 @@ class Server(SelectorBase):
   num_aggregators : The number of aggregators in use (int)
   rounds : Number of rounds the FL task is run for (int)
 
-  Device-Server message system:
-  We have three classes of messages
+  Server2Device message system:
   Message Class : what it does
-  0 : Class of notification messages from device to server
-    0 : Not Ready for participation
-    1 : Ready for participation
-    2 : Task running
-    3 : Task finished
-    -1 : Task aborted
-  1 : Ask the server for model or task scheme
-    0: Ask for the global model
-    1: Ask for task configuration file
-  2 : Send the server some stuff
-    0 : Send the gradient updates
-    1 : Send the task metrics
+  0 : Class of Notification messages from server to device
+    0 : Notify the device it's selected
+    1 : Notify the device to try later
+  1 : Class of Query messages from server to device
+    0 : Query the device if it's alive
+    1 : Query the device if it's ready
+  2 : Send the device some stuff
+    0 : Send the global model
+    1 : Send the task config
+    2 : Send the task metrics
+    #TODO: checkpoint stuff
   """
+
   def __init__(self, server_config):
     super(Server, self).__init__()
     self.config = server_config
@@ -98,6 +98,3 @@ class Server(SelectorBase):
     :return: Server's config (dict)
     """
     return self.config
-
-
-

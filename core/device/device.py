@@ -54,7 +54,7 @@ class Device(DeviceBase):
     0 : The updates are not sent
     1 : The updates are sent
 
-  Device-Server message system:
+  Device2Server message system:
   We have three classes of messages
   Message Class : what it does
   0 : Class of notification messages from device to server
