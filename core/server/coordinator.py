@@ -45,3 +45,14 @@ class CoordinatorBase(ABC):
     Global sync to make sure all devices are done with their round
     """
     raise NotImplementedError('Global sync not implemented')
+
+
+class Coordinator(CoordinatorBase):
+  """
+  Corrdinator
+  """
+  def __init__(self, coordinator_config):
+    super(Coordinator, self).__init__()
+    self.config = coordinator_config
+
+
