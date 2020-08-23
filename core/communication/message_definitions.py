@@ -80,9 +80,9 @@ class ServerDeviceMessage(object):
     1 : Send the task config
     2 : Send the task metrics
   """
-  S2D_NOTIF_CLASS = ServerDeviceNotifClass
-  S2D_QUERY_CLASS = ServerDeviceQueryClass
-  S2D_SEND_CLASS = ServerDeviceSendClass
+  S2D_NOTIF_CLASS = ServerDeviceNotifClass()
+  S2D_QUERY_CLASS = ServerDeviceQueryClass()
+  S2D_SEND_CLASS = ServerDeviceSendClass()
 
 
 class DeviceServerMessage(object):
@@ -103,6 +103,6 @@ class DeviceServerMessage(object):
     0 : Send the gradient updates
     1 : Send the task metrics
   """
-  D2S_NOTIF_CLASS = DeviceServerNotifClass
-  D2S_QUERY_CLASS = DeviceServerQueryClass
-  D2S_UPDATE_CLASS = DeviceServerSendClass
+  D2S_NOTIF_CLASS = DeviceServerNotifClass()
+  D2S_QUERY_CLASS = DeviceServerQueryClass()
+  D2S_UPDATE_CLASS = DeviceServerSendClass()
