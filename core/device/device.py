@@ -87,7 +87,8 @@ class Device(DeviceBase):
                    sender,
                    receiver,
                    msg_class,
-                   msg_id):
+                   msg_tyoe, 
+                   message):
 
 
   def ping_server(self, server_config):
