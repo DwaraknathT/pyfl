@@ -9,40 +9,32 @@ import torch.distributed as dist
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 from core.communication.message import Message
 import torch.multiprocessing as mp
-from torch.multiprocessing import Process, Pipe
+from torch.multiprocessing import Process, Pipe, Value
 
+#SERVER_ID = Value('i',0)
 device2server= DeviceServerMessage()
 server2device =ServerDeviceMessage()
 class Server:
-
   def run(self,comms):
-    print("Server is runnning \n")
-    print('module name:', __name__)
-    print('parent process:', os.getppid())
-    print('process id:', os.getpid())
     device_messages=[]
     for con in comms:
       dev_msg= con.recv()
-      device_messages.append(dev_msg[0])
-      print(dev_msg[0].sender_id)
+      device_messages.append(dev_msg)
+      print(dev_msg.get_message_params())
     
     #coor_obj = Coordinator()
     #oor_obj.run()
 
 
 class Device:
-  def run(self,comms):
+  def run(self,comms, server_id):
     my_msg= Message({'sender_id': os.getpid(), 
-                      'receiver_id': 0,
+                      'receiver_id': server_id.value,
                       'message_class': device2server.D2S_NOTIF_CLASS,
                       'message_type': device2server.D2S_NOTIF_CLASS.D2S_NOT_READY,
                       'message': None})
 
-    print("Device is running \n")
-    print('module name:', __name__)
-    print('parent process:', os.getppid())
-    print('process id:', os.getpid())
-    comms.send([my_msg])
+    comms.send(my_msg)
     
 
 class Coordinator:
@@ -52,14 +44,17 @@ class Coordinator:
     print("The number of batches per device {}".format(dataset_size // i))
 
 
-def spawn_server(comms):
+def spawn_server(comms, server_id):
   serv = Server()
+  server_id.acquire()
+  server_id.value=os.getpid()
+  server_id.release()
   serv.run(comms)
 
 
-def spawn_device(comms):
+def spawn_device(comms, server_id):
   dev = Device()
-  dev.run(comms)
+  dev.run(comms, server_id)
 
 
 def run(rank, size):
@@ -77,17 +72,17 @@ def run(rank, size):
   print('Rank ', rank, ' has data ', tensor[0])
 
 
-def init_process(rank, size, fn, comms, backend='gloo'):
+def init_process(rank, size, fn, comms, server_id = None, backend='gloo'):
   """ Initialize the distributed environment. """
   os.environ['MASTER_ADDR'] = '127.0.0.1'
   os.environ['MASTER_PORT'] = '29500'
   dist.init_process_group(backend, rank=rank, world_size=size)
-  fn(comms)
+  fn(comms, server_id)
 
 
 if __name__ == "__main__":
   mp.set_start_method('spawn')
-  # server_conn, dev_conn = Pipe()
+  SERVER_ID = Value('i',0)
   '''
   server_process = Process(target=spawn_server)
   dev_process = [Process(target=spawn_device) for _ in range(4)]
@@ -107,9 +102,9 @@ if __name__ == "__main__":
     device_comm.append(device_con)
   for i in range(5):
     if i == 0:
-      p = Process(target=init_process, args=(i, 5, spawn_server, server_comm))
+      p = Process(target=init_process, args=(i, 5, spawn_server, server_comm, SERVER_ID)) 
     else:
-      p = Process(target=init_process, args=(i, 5, spawn_device, device_comm[i-1]))
+      p = Process(target=init_process, args=(i, 5, spawn_device, device_comm[i-1], SERVER_ID))
     p.start()
     processes.append(p)
   
