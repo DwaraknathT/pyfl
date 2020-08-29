@@ -1,17 +1,16 @@
 import os
+
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
-import torch.nn.functional as F
 from torch.multiprocessing import Process, Pipe, Value
 
 from core.args import get_args
-from core.communication.message import Message
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
-from core.models.lenet import SimpleConvNet
 from core.datasets import get_data
-from core.utils import get_logger, setup_dirs
 from core.device.device import Device
+from core.utils import get_logger, setup_dirs
+
 if torch.cuda.is_available():
   device = 'cuda'
 else:
@@ -38,7 +37,7 @@ class Server:
     # coor_obj = Coordinator()
     # oor_obj.run()
 
-'''
+
 class Device:
   def __init__(self, model, dataset, task_config):
     print('Device init')
@@ -74,7 +73,7 @@ class Device:
   def run(self):
     print('starting training')
     self.train()
-'''
+
 
 class Coordinator:
   def run(self, i=1):
@@ -91,21 +90,22 @@ def spawn_server(comms, server_id, dataset=None):
   serv.run(comms)
 
 
-def spawn_device(comms, server_id, dataset):
-  device_config={
-    'device_id':os.getpid(),
+def spawn_device(comm, server_id, dataset):
+  device_config = {
+    'device_id': os.getpid(),
     'server_id': server_id,
-    'ready':0,
-    'participate':0,
-    'task_status':0,
-    'update_local_model':0,
-    'sync_server':0,
-    'model':args.model,
+    'ready': 0,
+    'participate': 0,
+    'task_status': 0,
+    'update_local_model': 0,
+    'sync_server': 0,
+    'model': args.model,
     'optimizer': args.optim
   }
   logger.info("Spawning device with device config : {}".format(device_config))
   device = Device(device_config=device_config,
-               dataset=dataset)
+                  comm=comm,
+                  dataset=dataset)
   device.run_device()
 
 

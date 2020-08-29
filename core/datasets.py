@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-from collections import defaultdict
 from random import Random
 
 import torch
@@ -109,7 +108,7 @@ def get_data(args):
     args.batch_size = int(args.batch_size / float(size))
     partition_sizes = [1.0 / size for _ in range(size)]
     partition = DataPartitioner(trainset, partition_sizes)
-    partition = partition.use(dist.get_rank() -1)
+    partition = partition.use(dist.get_rank() - 1)
     trainloader = torch.utils.data.DataLoader(partition,
                                               batch_size=args.batch_size,
                                               shuffle=True)
@@ -121,6 +120,7 @@ def get_data(args):
     testset, batch_size=args.batch_size, shuffle=False, num_workers=4)
 
   return trainloader, testloader
+
 
 '''
 def make_data_partition(args):
