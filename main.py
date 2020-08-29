@@ -15,14 +15,17 @@ from core.args import get_args
 from core.communication.message import Message
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 from core.models.lenet import SimpleConvNet
-from core.utils import get_data
+from core.datasets import get_data
+from core.utils import get_logger, setup_dirs
 
 if torch.cuda.is_available():
   device = 'cuda'
 else:
   device = 'cpu'
 
+setup_dirs()
 args = get_args()
+logger = get_logger(__name__)
 
 # SERVER_ID = Value('i',0)
 device2server = DeviceServerMessage()
@@ -126,6 +129,7 @@ if __name__ == "__main__":
   processes = []
   server_comm = []
   device_comm = []
+  logger.info('Run arguments::{}'.format(vars(args)))
 
   for i in range(2):
     server_con, device_con = Pipe()
