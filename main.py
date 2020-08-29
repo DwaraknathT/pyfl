@@ -1,10 +1,4 @@
-# from core.utils import get_data, make_data_partition
-# from core.args import get_args
-# import numpy as np
-
 import os
-
-# from mpi4py import MPI
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -17,7 +11,7 @@ from core.communication.message_definitions import DeviceServerMessage, ServerDe
 from core.models.lenet import SimpleConvNet
 from core.datasets import get_data
 from core.utils import get_logger, setup_dirs
-
+from core.device.device import Device
 if torch.cuda.is_available():
   device = 'cuda'
 else:
@@ -44,7 +38,7 @@ class Server:
     # coor_obj = Coordinator()
     # oor_obj.run()
 
-
+'''
 class Device:
   def __init__(self, model, dataset, task_config):
     print('Device init')
@@ -80,7 +74,7 @@ class Device:
   def run(self):
     print('starting training')
     self.train()
-
+'''
 
 class Coordinator:
   def run(self, i=1):
@@ -98,26 +92,37 @@ def spawn_server(comms, server_id, dataset=None):
 
 
 def spawn_device(comms, server_id, dataset):
-  task_config = {
-    'lr': 0.001,
-    'epochs': 1
+  device_config={
+    'device_id':os.getpid(),
+    'server_id': server_id,
+    'ready':0,
+    'participate':0,
+    'task_status':0,
+    'update_local_model':0,
+    'sync_server':0,
+    'model':args.model,
+    'optimizer': args.optim
   }
-  dev = Device(model=SimpleConvNet(),
-               dataset=dataset,
-               task_config=task_config)
-  dev.run()
+  logger.info("Spawning device with device config : {}".format(device_config))
+  device = Device(device_config=device_config,
+               dataset=dataset)
+  device.run_device()
 
 
 def run(rank, size, fn, comms, server_id):
   if rank != 0:
     trainset, testloader = get_data(args)
-  fn(comms, server_id, trainset)
+    fn(comms, server_id, trainset)
+  else:
+    fn(comms, server_id)
 
 
 def init_process(rank, size, fn, comms, server_id=None, backend='gloo'):
   """ Initialize the distributed environment. """
   os.environ['MASTER_ADDR'] = '127.0.0.1'
   os.environ['MASTER_PORT'] = '29500'
+  logger.info("MASTER_ADDR : {}".format(os.environ['MASTER_ADDR']))
+  logger.info("MASTER_PORT : {}".format(os.environ['MASTER_PORT']))
   dist.init_process_group(backend, rank=rank, world_size=size)
 
   run(rank, size, fn, comms, server_id)

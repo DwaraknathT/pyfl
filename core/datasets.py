@@ -109,7 +109,7 @@ def get_data(args):
     args.batch_size = int(args.batch_size / float(size))
     partition_sizes = [1.0 / size for _ in range(size)]
     partition = DataPartitioner(trainset, partition_sizes)
-    partition = partition.use(dist.get_rank())
+    partition = partition.use(dist.get_rank() -1)
     trainloader = torch.utils.data.DataLoader(partition,
                                               batch_size=args.batch_size,
                                               shuffle=True)

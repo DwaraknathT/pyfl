@@ -2,11 +2,14 @@ import errno
 import logging
 import os
 import sys
+import torch
 from logging.handlers import RotatingFileHandler
+from core.models.vgg import vgg11,vgg11_bn,vgg13,vgg13_bn, vgg16, vgg16_bn
+from core.models.resnet import resnet20, resnet32
+from core.models.lenet import LeNet, SimpleConvNet
 
 FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(process)d - %(levelname)s - %(message)s",
                               datefmt='%m/%d/%Y %I:%M:%S %p')
-
 
 def get_console_handler():
   console_handler = logging.StreamHandler(sys.stdout)
@@ -40,3 +43,26 @@ def setup_dirs():
   except OSError as e:
     if e.errno != errno.EEXIST:
       raise
+
+def get_model(task_config):
+  if task_config['model']=='simplenet':
+    model= SimpleConvNet()
+  elif task_config['model']=='lenet':
+    model= LeNet()
+  elif task_config['model']=='vgg11':
+    model = vgg11()
+  elif task_config['model']=='vgg11_bn':
+    model = vgg11_bn()
+  elif task_config['model']=='resnet20':
+    model = resnet20(task_config['num_clases'])
+  else:
+    raise NotImplementedError("Model not supported")   
+
+  if task_config['optim']=='sgd':
+    optim= torch.optim.sgd()
+  elif task_config['optim']=='adam':
+    optim= torch.optim.adam()
+  else:
+    raise NotImplementedError("Optimizer not implemented")
+
+  return model, optim

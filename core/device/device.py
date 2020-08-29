@@ -1,16 +1,36 @@
 from abc import ABC
+import abc
+from core.utils import get_logger, get_model
+from core.communication.message import Message
+from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 
+logger= get_logger(__name__)
+device2server = DeviceServerMessage()
+server2device = ServerDeviceMessage()
 
-class DeviceBase(ABC):
+class DeviceBase(object):
   """
   Device abstract base class
   """
-
+  __metaclass__ = abc.ABCMeta
+  @abc.abstractmethod
   def __init__(self, **kwargs):
     """
     Device initializer
     """
     raise NotImplementedError('Device base class not implemented')
+
+  def build_device(self, **kwargs):
+    """
+    Build device object based on given arguments 
+    """
+    raise NotImplementedError('Build device not implemented')
+
+  def run_device(self, **kwargs):
+    """
+    Start the device
+    """
+    raise NotImplementedError('Run device not implemented')
 
   def ping_server(self, **kwargs):
     """
@@ -75,37 +95,60 @@ class Device(DeviceBase):
   """
 
   def __init__(self, device_config, dataset):
-    super(Device, self).__init__()
     self.device_config = device_config
     self.dataset = dataset
     self.model = None
+    self.optim = None
+    self.lr_scheduler = None
     self.participate = False
     self.task_config = None
     self.updates = None
 
-  def send_message(self,
-                   sender,
-                   receiver,
-                   msg_class,
-                   msg_tyoe, 
-                   message):
+  def build_device(self,task_config):
+    self.model,self.optim = get_model(task_config)
 
+  def run_device(self):
+    #Setting the device to ready
+    self.device_config['ready'] = 1
+    logger.info("Set device_config['ready'] to 1")
+    self.ping_server()
+
+  def send_message(self,
+                   Message):
+    print("send_message")
 
   def ping_server(self, server_config):
-    if self.device_config['ready']:
-      self.participate = send_message(sender=self.device_config['device_id'],
-                                      receiver=server_config['server_id'],
-                                      msg_class=0,
-                                      msg_id=0)
+    self.participate = self.send_message(Message({'sender_id' : self.device_config['device_id'],
+                                      'receiver_id': self.device_config['server_id'],
+                                      'message_class': device2server.D2S_NOTIF_CLASS,
+                                      'message_type': device2server.D2S_NOTIF_CLASS.D2S_READY if self.device_config['ready']
+                                      else device2server.D2S_NOTIF_CLASS.D2S_NOT_READY,
+                                      'message': None}))
+                      
     if self.participate:
-      self.task_config = send_message(server_config['server_id'],
-                                      msg_class=1,
-                                      msg_id=1)
-      self.model = send_message(server_config['server_id'], msg_class=1, msg_id=0)
+      self.task_config = self.send_message(Message({'sender_id' : self.device_config['device_id'],
+                                      'receiver_id': self.device_config['server_id'],
+                                      'message_class': device2server.D2S_NOTIF_CLASS,
+                                      'message_type': device2server.D2S_NOTIF_CLASS.D2S_READY if self.device_config['ready']
+                                      else device2server.D2S_NOTIF_CLASS.D2S_NOT_READY,
+                                      'message': None}))
+
+      self.model = self.send_message(Message({'sender_id' : self.device_config['device_id'],
+                                      'receiver_id': self.device_config['server_id'],
+                                      'message_class': device2server.D2S_NOTIF_CLASS,
+                                      'message_type': device2server.D2S_NOTIF_CLASS.D2S_READY if self.device_config['ready']
+                                      else device2server.D2S_NOTIF_CLASS.D2S_NOT_READY,
+                                      'message': None}))
+                                      
       self.execute_task(self.task_config, model)
       if self.device_config['task_status'] == 1:
         self.update_model()
-        self.device_config['sync_server'] = send_message('send grads')
+        self.device_config['sync_server'] = self.send_message(Message({'sender_id' : self.device_config['device_id'],
+                                      'receiver_id': self.device_config['server_id'],
+                                      'message_class': device2server.D2S_NOTIF_CLASS,
+                                      'message_type': device2server.D2S_NOTIF_CLASS.D2S_READY if self.device_config['ready']
+                                      else device2server.D2S_NOTIF_CLASS.D2S_NOT_READY,
+                                      'message': None}))
 
   def update_model(self):
     print('updating local model')

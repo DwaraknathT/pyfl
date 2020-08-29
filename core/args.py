@@ -5,6 +5,8 @@ parser = argparse.ArgumentParser(description='Ensemble Training')
 parser.add_argument(
   '--model', default='lenet', type=str, help='Model to use')
 parser.add_argument(
+  '--optim', default='sgd', type=str, help='Optimizer to use')
+parser.add_argument(
   '--dataset', default='mnist', type=str, help='Dataset to use')
 parser.add_argument(
   '--num_classes', default=10, type=int, help='Number of classes')
