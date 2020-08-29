@@ -8,8 +8,11 @@ from torch.multiprocessing import Process, Pipe, Value
 from core.args import get_args
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 from core.datasets import get_data
-from core.device.device import Device
+#from core.device.device import Device
+from core.models.lenet import SimpleConvNet
 from core.utils import get_logger, setup_dirs
+from core.communication.message import Message
+import torch.nn.functional as F
 
 if torch.cuda.is_available():
   device = 'cuda'
@@ -37,6 +40,14 @@ class Server:
     # coor_obj = Coordinator()
     # oor_obj.run()
 
+""" Gradient averaging. """
+def average_gradients(model):
+    size = float(dist.get_world_size())
+    for param in model.parameters():
+        dist.all_reduce(param.grad.data,
+                        group=dist.new_group([x for x in range(1, int(size))]),
+                        op=dist.ReduceOp.SUM)
+        param.grad.data /= (size-1)
 
 class Device:
   def __init__(self, model, dataset, task_config):
@@ -65,6 +76,7 @@ class Device:
       output = self.model(data)
       loss = F.nll_loss(output, target)
       loss.backward()
+      average_gradients(self.model)
       self.optimizer.step()
       if batch_idx % 5 == 0:
         print('Train batch: {} Loss: {:.4f}'.format(
@@ -91,6 +103,7 @@ def spawn_server(comms, server_id, dataset=None):
 
 
 def spawn_device(comm, server_id, dataset):
+  """
   device_config = {
     'device_id': os.getpid(),
     'server_id': server_id,
@@ -106,7 +119,11 @@ def spawn_device(comm, server_id, dataset):
   device = Device(device_config=device_config,
                   comm=comm,
                   dataset=dataset)
-  device.run_device()
+  """
+  device = Device(SimpleConvNet(),
+                  dataset,
+                  {'lr': 0.01})
+  device.run()
 
 
 def run(rank, size, fn, comms, server_id):
