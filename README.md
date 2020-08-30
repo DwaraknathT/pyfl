@@ -1,25 +1,25 @@
 # PyFL
 An implementation of the paper ["Towards Federated Learning at scale: System Design"](https://arxiv.org/abs/1902.01046) in PyTorch 
-##Architecture 
+## Architecture 
 
 The two major components of FL - Server, Device 
 
-###Server 
+### Server 
 * Coordinator 
 * Selector 
 * Aggregator 
 * Master Aggregator 
 
-###Device 
+### Device 
 Explain device here 
 
-###Communation 
+### Communation 
 * Message definitions 
 * Message class 
 * Commincator class 
 
-##Algorithms 
-###FedAvg 
+## Algorithms 
+### FedAvg 
 Explain fedavg here 
 
 ## How to run ? 
