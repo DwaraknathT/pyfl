@@ -38,11 +38,11 @@ class DeviceServerSendClass(object):
 
 class ServerDeviceNotifClass(object):
   """
-  0 : Notify the device it's selected
-  1 : Notify the device to try later
+  1 : Notify the device it's selected
+  0 : Notify the device to try later
   """
-  S2D_SELECTED = 0
-  S2D_TRY_LATER_LOSER = 1
+  S2D_SELECTED = 1
+  S2D_TRY_LATER = 0
 
 
 class ServerDeviceQueryClass(object):

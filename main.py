@@ -1,21 +1,22 @@
 import os
 
 import torch
+import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.multiprocessing import Process, Pipe, Value
 
 from core.args import get_args
+from core.communication.message import Message
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 from core.datasets import get_data
-#from core.device.device import Device
+# from core.device.device import Device
 from core.models.lenet import SimpleConvNet
 from core.utils import get_logger, setup_dirs
-from core.communication.message import Message
-import torch.nn.functional as F
 
 if torch.cuda.is_available():
   device = 'cuda'
+  cudnn.benchmark = True
 else:
   device = 'cpu'
 
@@ -40,20 +41,25 @@ class Server:
     # coor_obj = Coordinator()
     # oor_obj.run()
 
+
 """ Gradient averaging. """
+
+
 def average_gradients(model):
-    size = float(dist.get_world_size())
-    for param in model.parameters():
-        dist.all_reduce(param.grad.data,
-                        group=dist.new_group([x for x in range(1, int(size))]),
-                        op=dist.ReduceOp.SUM)
-        param.grad.data /= (size-1)
+  size = float(dist.get_world_size())
+  for param in model.parameters():
+    dist.all_reduce(param.grad.data,
+                    group=dist.new_group([x for x in range(1, int(size))]),
+                    op=dist.ReduceOp.SUM)
+    param.grad.data /= (size - 1)
+
 
 class Device:
   def __init__(self, model, dataset, task_config):
     print('Device init')
-    self.model = model
+    self.model = model.to(device)
     self.dataset = dataset
+    self.criterion = torch.nn.CrossEntropyLoss()
     print(dataset)
     self.optimizer = torch.optim.SGD(self.model.parameters(),
                                      lr=task_config['lr'])
@@ -70,21 +76,42 @@ class Device:
 
   def train(self):
     self.model.train()
-    for batch_idx, (data, target) in enumerate(self.dataset):
-      data, target = data, target.to(device)
+    correct = 0
+    for batch_idx, (data, target) in enumerate(self.dataset['trainset']):
+      data, target = data.to(device), target.to(device)
       self.optimizer.zero_grad()
       output = self.model(data)
-      loss = F.nll_loss(output, target)
+      loss = self.criterion(output, target)
       loss.backward()
       average_gradients(self.model)
       self.optimizer.step()
-      if batch_idx % 5 == 0:
-        print('Train batch: {} Loss: {:.4f}'.format(
-          batch_idx, loss.item()))
+      pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+      correct += pred.eq(target.view_as(pred)).sum().item()
+      if batch_idx % 100 == 0:
+        print('Train batch: {} Loss: {:.4f} Accuracy: {:.0f}%'.format(
+          batch_idx, loss.item(), 100. * correct / len(self.dataset['testset'].dataset)))
+
+  def test(self):
+    self.model.eval()
+    test_loss = 0
+    correct = 0
+    with torch.no_grad():
+      for data, target in self.dataset['testset']:
+        data, target = data.to(device), target.to(device)
+        output = self.model(data)
+        test_loss += self.criterion(output, target).item()  # sum up batch loss
+        pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+        correct += pred.eq(target.view_as(pred)).sum().item()
+
+    test_loss /= len(self.dataset['testset'].dataset)
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {:.0f}%\n'.format(
+      test_loss, 100. * correct / len(self.dataset['testset'].dataset)))
 
   def run(self):
     print('starting training')
     self.train()
+    self.test()
 
 
 class Coordinator:
@@ -128,8 +155,9 @@ def spawn_device(comm, server_id, dataset):
 
 def run(rank, size, fn, comms, server_id):
   if rank != 0:
-    trainset, testloader = get_data(args)
-    fn(comms, server_id, trainset)
+    dataset = {}
+    dataset['trainset'], dataset['testset'] = get_data(args)
+    fn(comms, server_id, dataset)
   else:
     fn(comms, server_id)
 
@@ -152,18 +180,24 @@ if __name__ == "__main__":
   server_comm = []
   device_comm = []
   logger.info('Run arguments::{}'.format(vars(args)))
+  size = args.num_devices
+  sdmsg = Message({'sender_id': os.getpid(),
+                   'receiver_id': 0,
+                   'message_class': server2device.S2D_SEND_CLASS,
+                   'message_type': server2device.S2D_SEND_CLASS.S2D_SEND_TASK_CONFIG,
+                   'message': None})
 
-  for i in range(2):
+  for i in range(size):
     server_con, device_con = Pipe()
     server_comm.append(server_con)
     device_comm.append(device_con)
-  for i in range(3):
+  for i in range(size + 1):
     if i == 0:
-      p = Process(target=init_process, args=(i, 3,
+      p = Process(target=init_process, args=(i, (size + 1),
                                              spawn_server, server_comm,
                                              SERVER_ID))
     else:
-      p = Process(target=init_process, args=(i, 3,
+      p = Process(target=init_process, args=(i, (size + 1),
                                              spawn_device, device_comm[i - 1],
                                              SERVER_ID))
     p.start()
