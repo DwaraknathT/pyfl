@@ -1,99 +1,72 @@
-from __future__ import print_function
-
-from collections import defaultdict
+import errno
+import logging
+import os
+import sys
+from logging.handlers import RotatingFileHandler
 
 import torch
-import torchvision
-import torchvision.transforms as transforms
 
-mean = {
-  'mnist': (0.1307,),
-  'cifar10': (0.4914, 0.4822, 0.4465),
-  'cifar100': (0.5071, 0.4867, 0.4408),
-  'imagenet': (0.485, 0.456, 0.406),
-}
-std = {
-  'mnist': (0.3081,),
-  'cifar10': (0.2023, 0.1994, 0.2010),
-  'cifar100': (0.2675, 0.2565, 0.2761),
-  'imagenet': (0.229, 0.224, 0.225),
-}
+from core.models.lenet import LeNet, SimpleConvNet
+from core.models.resnet import resnet20
+from core.models.vgg import vgg11, vgg11_bn
+
+FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(process)d - %(levelname)s - %(message)s",
+                              datefmt='%m/%d/%Y %I:%M:%S %p')
 
 
-def get_data(args):
-  """ Applies general preprocess transformations to Datasets
-      ops -
-      transforms.Normalize = Normalizes each channel of the image
-      args - mean tensor, standard-deviation tensor
-      transforms.RandomCrops - crops the image at random location
-      transforms.HorizontalFlip - randomly flips the image
-  """
-  transform_train = transforms.Compose([
-    transforms.RandomCrop(32, padding=4),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize(mean[args.dataset], std[args.dataset]),
-  ])
-
-  transform_test = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize(mean[args.dataset], std[args.dataset])
-  ])
-  if args.dataset == 'mnist':
-    trainset = torchvision.datasets.MNIST(
-      root='./data', train=True, download=True, transform=transform_train)
-    trainloader = torch.utils.data.DataLoader(
-      trainset, batch_size=args.batch_size, shuffle=True, num_workers=2)
-    testset = torchvision.datasets.MNIST(
-      root='./data', train=False, download=True, transform=transform_test)
-    testloader = torch.utils.data.DataLoader(
-      testset, batch_size=args.batch_size, shuffle=False, num_workers=2)
-
-  if args.dataset == 'cifar10':
-    trainset = torchvision.datasets.CIFAR10(
-      root='./data', train=True, download=True, transform=transform_train)
-    trainloader = torch.utils.data.DataLoader(
-      trainset, batch_size=args.batch_size, shuffle=True, num_workers=4)
-
-    testset = torchvision.datasets.CIFAR10(
-      root='./data', train=False, download=True, transform=transform_test)
-    testloader = torch.utils.data.DataLoader(
-      testset, batch_size=args.batch_size, shuffle=False, num_workers=4)
-    args.num_classes = 10
-
-  elif args.dataset == 'cifar100':
-    trainset = torchvision.datasets.CIFAR100(
-      root='./data', train=True, download=True, transform=transform_train)
-    trainloader = torch.utils.data.DataLoader(
-      trainset, batch_size=args.batch_size, shuffle=True, num_workers=4)
-
-    testset = torchvision.datasets.CIFAR100(
-      root='./data', train=False, download=True, transform=transform_test)
-    testloader = torch.utils.data.DataLoader(
-      testset, batch_size=args.batch_size, shuffle=False, num_workers=4)
-    args.num_classes = 100
-
-  return trainloader, testloader
+def get_console_handler():
+  console_handler = logging.StreamHandler(sys.stdout)
+  console_handler.setFormatter(FORMATTER)
+  return console_handler
 
 
-def make_data_partition(args):
-  """
-  Make non-iid, iid partition of a given dataset based on
-  number of workers
-  :param args: Argument object
-  :return: Dictionary with dataset partitions for each worker
-  """
-  trainloader, testloader = get_data(args)
-  device_specific_dataset = defaultdict(list)
-  num_batches = len(trainloader)
-  num_batches_per_device = num_batches // args.num_devices
-  device_id = 0
-  for batch_idx, (data, target) in enumerate(trainloader):
-    if batch_idx % num_batches_per_device == 0:
-      device_id += 1
-    device_specific_dataset[device_id].append(data)
+def get_file_handler(logfile_name):
+  try:
+    file_handler = RotatingFileHandler('logs/{}.log'.format(logfile_name, mode='w'))
+  except:
+    raise OSError('Logs directory not created')
+  file_handler.setFormatter(FORMATTER)
+  return file_handler
 
-  device_specific_dataset = {key: iter(device_specific_dataset[key])
-                             for key in device_specific_dataset.keys()}
 
-  return device_specific_dataset
+def get_logger(logger_name):
+  logger = logging.getLogger(logger_name)
+  logger.setLevel(logging.DEBUG)  # better to have too much log than not enough
+  logger.addHandler(get_console_handler())
+  logger.addHandler(get_file_handler(logger_name))
+  # with this pattern, it's rarely necessary to propagate the error up to parent
+  logger.propagate = False
+  return logger
+
+
+def setup_dirs():
+  try:
+    os.makedirs('logs')
+    os.makedirs('runs')
+  except OSError as e:
+    if e.errno != errno.EEXIST:
+      raise
+
+
+def get_model(task_config):
+  if task_config['model'] == 'simplenet':
+    model = SimpleConvNet()
+  elif task_config['model'] == 'lenet':
+    model = LeNet()
+  elif task_config['model'] == 'vgg11':
+    model = vgg11()
+  elif task_config['model'] == 'vgg11_bn':
+    model = vgg11_bn()
+  elif task_config['model'] == 'resnet20':
+    model = resnet20(task_config['num_clases'])
+  else:
+    raise NotImplementedError("Model not supported")
+
+  if task_config['optim'] == 'sgd':
+    optim = torch.optim.sgd()
+  elif task_config['optim'] == 'adam':
+    optim = torch.optim.adam()
+  else:
+    raise NotImplementedError("Optimizer not implemented")
+
+  return model, optim

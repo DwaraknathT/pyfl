@@ -38,11 +38,11 @@ class DeviceServerSendClass(object):
 
 class ServerDeviceNotifClass(object):
   """
-  0 : Notify the device it's selected
-  1 : Notify the device to try later
+  1 : Notify the device it's selected
+  0 : Notify the device to try later
   """
-  S2D_SELECTED = 0
-  S2D_TRY_LATER_LOSER = 1
+  S2D_SELECTED = 1
+  S2D_TRY_LATER = 0
 
 
 class ServerDeviceQueryClass(object):
@@ -80,9 +80,9 @@ class ServerDeviceMessage(object):
     1 : Send the task config
     2 : Send the task metrics
   """
-  S2D_NOTIF_CLASS = ServerDeviceNotifClass
-  S2D_QUERY_CLASS = ServerDeviceQueryClass
-  S2D_SEND_CLASS = ServerDeviceSendClass
+  S2D_NOTIF_CLASS = ServerDeviceNotifClass()
+  S2D_QUERY_CLASS = ServerDeviceQueryClass()
+  S2D_SEND_CLASS = ServerDeviceSendClass()
 
 
 class DeviceServerMessage(object):
@@ -103,6 +103,6 @@ class DeviceServerMessage(object):
     0 : Send the gradient updates
     1 : Send the task metrics
   """
-  D2S_NOTIF_CLASS = DeviceServerNotifClass
-  D2S_QUERY_CLASS = DeviceServerQueryClass
-  D2S_UPDATE_CLASS = DeviceServerSendClass
+  D2S_NOTIF_CLASS = DeviceServerNotifClass()
+  D2S_QUERY_CLASS = DeviceServerQueryClass()
+  D2S_UPDATE_CLASS = DeviceServerSendClass()

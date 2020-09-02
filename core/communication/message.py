@@ -7,6 +7,7 @@ class Message(ABC):
     self.sender_id = message_params['sender_id']
     self.receiver_id = message_params['receiver_id']
     self.message_class = message_params['message_class']
+    self.message_type = message_params['message_type']
     self.message = message_params['message']
 
   def get_sender(self):

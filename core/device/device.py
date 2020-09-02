@@ -1,16 +1,47 @@
-from abc import ABC
+import abc
+
+import torch
+import torch.backends.cudnn as cudnn
+
+from core.communication.message import Message
+from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
+from core.utils import get_logger, get_model
+
+logger = get_logger(__name__)
+device2server = DeviceServerMessage()
+server2device = ServerDeviceMessage()
+
+if torch.cuda.is_available():
+  device = 'cuda'
+  cudnn.benchmark = True
+else:
+  device = 'cpu'
 
 
-class DeviceBase(ABC):
+class DeviceBase(object):
   """
   Device abstract base class
   """
+  __metaclass__ = abc.ABCMeta
 
+  @abc.abstractmethod
   def __init__(self, **kwargs):
     """
     Device initializer
     """
     raise NotImplementedError('Device base class not implemented')
+
+  def build_device(self, **kwargs):
+    """
+    Build device object based on given arguments 
+    """
+    raise NotImplementedError('Build device not implemented')
+
+  def run_device(self, **kwargs):
+    """
+    Start the device
+    """
+    raise NotImplementedError('Run device not implemented')
 
   def ping_server(self, **kwargs):
     """
@@ -74,40 +105,157 @@ class Device(DeviceBase):
   we set participate var to 1. If the request is rejected we set it to 0
   """
 
-  def __init__(self, device_config, dataset):
-    super(Device, self).__init__()
+  def __init__(self, device_config, comm, dataset):
     self.device_config = device_config
     self.dataset = dataset
     self.model = None
+    self.optimizer = None
+    self.comm = comm
+    self.lr_scheduler = None
     self.participate = False
     self.task_config = None
-    self.updates = None
+    self.gradient_updates = []
+
+  def build_device(self, task_config):
+    self.model, self.optimizer = get_model(task_config)
 
   def send_message(self,
-                   sender,
-                   receiver,
-                   msg_class,
-                   msg_id):
+                   message):
+    logger.info('Sending Message {} to Server'.format(message))
+    self.comm.send(message)
+    server_response = self.recv_message()
+    return server_response
+
+  def recv_message(self):
+    message = None
+    if self.comm.poll():
+      message = self.comm.recv()
+    return message
+
+  def apply_weights(self, weights_list):
+    count = 0
+    for layer in self.model.parameters():
+      if hasattr(layer, 'mask'):
+        layer.weight.data = weights_list[count]
+        self.gradient_updates.append(torch.zeros_like(layer.weight.data))
+        count += 1
+
+  def ping_server(self):
+    """
+    Send the server a series of messages
+    Messages sent:
+    1. Tell the server device is ready to participate, see what the server says
+    2. If accepted, ask the server for task config
+    3. Ask the server for global model weights (build the model, optim objects based on task config)
+    :return:
+    """
+    participate_query_response = self.send_message(Message({
+      'sender_id': self.device_config['device_id'],
+      'receiver_id': self.device_config['server_id'],
+      'message_class': device2server.D2S_NOTIF_CLASS,
+      'message_type': device2server.D2S_NOTIF_CLASS.D2S_READY if
+      self.device_config['ready']
+      else device2server.D2S_NOTIF_CLASS.D2S_NOT_READY,
+      'message': None
+    }))
+
+    if not (isinstance(participate_query_response['message_class'], server2device.S2D_NOTIF_CLASS)):
+      logger.error('Wrong message class used by the server')
+      raise ValueError
+    else:
+      self.participate = participate_query_response.message_type
+
+    if self.participate == 0:
+      return
+
+    # Query the server for Task config, which is going to be a dict
+    # with all training config params in it.
+    task_query_response = self.send_message(Message({
+      'sender_id': self.device_config['device_id'],
+      'receiver_id': self.device_config['server_id'],
+      'message_class': device2server.D2S_QUERY_CLASS,
+      'message_type': device2server.D2S_QUERY_CLASS.D2S_QUERY_TASK_CONFIG,
+      'message': None
+    }))
+    # Check if the received message of the correct class
+    if not (isinstance(task_query_response['message_class'], server2device.S2D_SEND_CLASS)):
+      logger.error('Wrong message class used by the server')
+      raise ValueError
+    else:
+      # Store the task_config in the the class attribute
+      self.task_config = task_query_response.message
+      if self.task_config is None:
+        logger.error('Task config is None type')
+
+    # Create the model, optimizer object to store the global weights in it
+    self.build_device(self.task_config)
+
+    # Query the server for the global model weights
+    model_query_response = self.send_message(Message({
+      'sender_id': self.device_config['device_id'],
+      'receiver_id': self.device_config['server_id'],
+      'message_class': device2server.D2S_QUERY_CLASS,
+      'message_type': device2server.D2S_QUERY_CLASS.D2S_QUERY_GLOBAL_MODEL,
+      'message': None
+    }))
+    if not (isinstance(model_query_response['message_class'], server2device.S2D_SEND_CLASS)):
+      logger.error('Wrong message class used by the server')
+      raise ValueError
+    else:
+      # Store the model in the the class attribute
+      weights = task_query_response.message
+      if self.model is None:
+        logger.error('Model not instantiated')
+      else:
+        self.apply_weights(weights)
+        logger.info('Applied global weights to local model')
+
+  def store_grads(self):
+    """
+    Maintain a running average of the model's gradients to send to the server
+    :return: None
+    """
+    count = 0
+    for layer in self.model.parameters():
+      if hasattr(layer, 'mask'):
+        self.gradient_updates[count] = (0.7 * layer.weight.grad.data) + (0.3 * self.gradient_updates[count])
+        count += 1
+
+  def train_step(self):
+    """
+    Good ol' training step
+    :return:
+    """
+    self.model.train()
+    correct = 0
+    for batch_idx, (data, target) in enumerate(self.dataset['trainset']):
+      data, target = data.to(device), target.to(device)
+      self.optimizer.zero_grad()
+      output = self.model(data)
+      loss = self.criterion(output, target)
+      loss.backward()
+      self.store_grads()
+      self.optimizer.step()
+      pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+      correct += pred.eq(target.view_as(pred)).sum().item()
+
+  def execute_task(self):
+    logger.info('Executing {} task'.format(self.task_config['task_name']))
+    logger.info('Using task config {}'.format(self.task_config))
+    if batch_idx % 100 == 0:
+      print('Train batch: {} Loss: {:.4f} Accuracy: {:.0f}%'.format(
+        batch_idx, loss.item(), 100. * correct / len(self.dataset['testset'].dataset)))
 
 
-  def ping_server(self, server_config):
-    if self.device_config['ready']:
-      self.participate = send_message(sender=self.device_config['device_id'],
-                                      receiver=server_config['server_id'],
-                                      msg_class=0,
-                                      msg_id=0)
-    if self.participate:
-      self.task_config = send_message(server_config['server_id'],
-                                      msg_class=1,
-                                      msg_id=1)
-      self.model = send_message(server_config['server_id'], msg_class=1, msg_id=0)
-      self.execute_task(self.task_config, model)
-      if self.device_config['task_status'] == 1:
-        self.update_model()
-        self.device_config['sync_server'] = send_message('send grads')
+def run_device(self):
+  # Setting the device to ready
+  self.device_config['ready'] = 1
+  logger.info("Set device_config['ready'] to 1")
+  # Ping the server to get task config and global weights to
+  # start the task
+  self.ping_server()
+  self.execute_task()
 
-  def update_model(self):
-    print('updating local model')
 
-  def execute_task(self, task_config, model):
-    print('run training loop')
+def update_model(self):
+  print('updating local model')
