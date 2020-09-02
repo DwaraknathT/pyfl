@@ -26,6 +26,13 @@ Explain fedavg here
 commands here 
 
 ## To Do
-* Gradient compression 
-* Secure byzantine learning
-* Enemble distillation 
+- [ ] Gradient compression 
+- [ ] Secure byzantine learning
+- [ ] Enable distillation 
+- [ ] Check optimiser modification in training
+- [ ] Message synchronisation methods 
+- [ ] Check if logger can display device #
+- [ ] Eliminate the ready alive class
+- [ ] Polling pipe ?
+- [ ] Better Message class organisation
+- [ ] Comment out functions
