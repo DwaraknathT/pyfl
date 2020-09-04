@@ -63,9 +63,9 @@ def get_model(task_config):
   else:
     raise NotImplementedError("Model not supported")
 
-  if task_config['optim'] == 'sgd':
+  if task_config['optimizer'] == 'sgd':
     optim = torch.optim.sgd()
-  elif task_config['optim'] == 'adam':
+  elif task_config['optimizer'] == 'adam':
     optim = torch.optim.adam()
   else:
     raise NotImplementedError("Optimizer not implemented")

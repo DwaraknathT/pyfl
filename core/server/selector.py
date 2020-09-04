@@ -39,12 +39,12 @@ class Selector(SelectorBase):
 
   #TODO: Add support for dropout
   What is Selector config ? A dict with the following params:
-  * Selector id : A unique identifier for each selector
-  * total_population : Total number of devices that established bi-directional comm
-    channel with selector (int)
-  * total_population_ids : Ihe ids of all devices registered to the selector
-  * selected_population : Total number of devices determined chosen or a given FL task (int)
-  * selected_population_ids : The ids of all devices participating in the FL task
+  selector_id : A unique identifier for each selector
+  selected_population : Total number of devices determined chosen or a given FL task (int)
+  max_devices_per_selector : Maximum number of devices per selector
+  selected_devices : dict corresponding to the devices selected for a given FL task
+    device_id : device_ids of the devices
+    device_comm: Communicator objects 
 
   The selector registers all devices that ping it to participate in the FL task,
   but only chooses certain number of devices that coordinator

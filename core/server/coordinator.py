@@ -1,3 +1,4 @@
+import abc
 from abc import ABC
 
 
@@ -13,9 +14,9 @@ class CoordinatorBase(ABC):
     """
     raise NotImplementedError('Initializer not implemented')
 
-  def init_task_plan(self, **kwargs):
+  def init_task_config(self, **kwargs):
     """
-    Initializes the population based on the given task
+    Initializes the population based on the given task 
     """
     raise NotImplementedError('Population initializer not implemented')
 
@@ -49,10 +50,35 @@ class CoordinatorBase(ABC):
 
 class Coordinator(CoordinatorBase):
   """
-  Corrdinator
+  Coordinator
+
+  What is coordinator_config? A dictionary with the following params:
+  total_num_devices: Total number of devices 
+  num_devices_per_aggregator: Maximum limit to the number of devices an aggregator handles
+  num_aggregators: decided based on total_num_devices and num_devices_per_aggregator
   """
   def __init__(self, coordinator_config):
-    super(Coordinator, self).__init__()
     self.config = coordinator_config
 
 
+  def init_task_config(self):
+    """
+    Initializes the population based on the given task 
+    (i.e, #devices required 
+
+    What is task config? A dictionary with the following params:
+    task_name: Name of the task being executed on the device
+      train: run training on the device
+      inference: run inference on the device
+    model: Model architecture to be used by the devices
+      eg: vgg11, vgg11_bn, resnet20, lenet, simplenet
+    optimizer: Optimizer to use
+    epochs: Number of epochs to train (if train), else None
+    lr_params: Learning rate params
+      lr_schedule: LR scheduler to use, eg: multi_step, cyclical
+      initial_lr: initial learning rate
+      up_step: up step size for cyclical lr, else None
+      down_step: down step size for cyclical lr, else None
+    metrics: dict of metrics to be returned by the device
+      eg: accuracy, nll, error, bleu
+    """
