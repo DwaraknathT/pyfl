@@ -1,5 +1,6 @@
 import os
 
+import loguru
 import torch
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
@@ -7,12 +8,13 @@ import torch.multiprocessing as mp
 from torch.multiprocessing import Process, Pipe, Value
 
 from core.args import get_args
-from core.communication.message import Message
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 from core.datasets import get_data
-# from core.device.device import Device
-from core.models.lenet import SimpleConvNet
+from core.device.device import Device
+from core.server.server import Server
 from core.utils import get_logger, setup_dirs
+
+log = loguru.logger
 
 if torch.cuda.is_available():
   device = 'cuda'
@@ -28,13 +30,21 @@ logger = get_logger(__name__)
 device2server = DeviceServerMessage()
 server2device = ServerDeviceMessage()
 
-
+'''
 class Server:
   def run(self, comms):
     print('Server init')
     device_messages = []
     for con in comms:
       dev_msg = con.recv()
+      message = Message({
+        'sender_id': os.getpid(),
+        'receiver_id': 0,
+        'message_class': server2device.S2D_NOTIF_CLASS,
+        'message_type': server2device.S2D_NOTIF_CLASS.S2D_SELECTED,
+        'message': None
+      })
+      con.send(message)
       device_messages.append(dev_msg)
       print(dev_msg.get_message_params())
 
@@ -43,7 +53,6 @@ class Server:
 
 
 """ Gradient averaging. """
-
 
 def average_gradients(model):
   size = float(dist.get_world_size())
@@ -112,6 +121,7 @@ class Device:
     print('starting training')
     self.train()
     self.test()
+'''
 
 
 class Coordinator:
@@ -122,15 +132,27 @@ class Coordinator:
 
 
 def spawn_server(comms, server_id, dataset=None):
-  serv = Server()
   server_id.acquire()
   server_id.value = os.getpid()
   server_id.release()
-  serv.run(comms)
+  server_config = {
+    'server_id': server_id.value,
+    'num_selectors': 1,
+    'num_coordinators': 1,
+    'num_master_aggregators': 1,
+    'num_aggregators': 1,
+    'rounds': 1,
+    'run_args': args
+  }
+  logger.info("Spawning server with device config : {}".format(server_config))
+  log.info("Spawning server with device config : {}".format(server_config))
+  server = Server(server_config,
+                  comms=comms)
+  server.run_server()
+  # serv.run(comms)
 
 
 def spawn_device(comm, server_id, dataset):
-  """
   device_config = {
     'device_id': os.getpid(),
     'server_id': server_id,
@@ -143,21 +165,25 @@ def spawn_device(comm, server_id, dataset):
     'optimizer': args.optim
   }
   logger.info("Spawning device with device config : {}".format(device_config))
+  log.info("Spawning device with device config : {}".format(device_config))
   device = Device(device_config=device_config,
                   comm=comm,
                   dataset=dataset)
+  exit(0)
+  device.run_device()
   """
   device = Device(SimpleConvNet(),
                   dataset,
                   {'lr': 0.01})
   device.run()
+  """
 
 
 def run(rank, size, fn, comms, server_id):
   if rank != 0:
     dataset = {}
     dataset['trainset'], dataset['testset'] = get_data(args)
-    fn(comms, server_id, dataset)
+    fn(comms, server_id.value, dataset)
   else:
     fn(comms, server_id)
 
@@ -181,11 +207,6 @@ if __name__ == "__main__":
   device_comm = []
   logger.info('Run arguments::{}'.format(vars(args)))
   size = args.num_devices
-  sdmsg = Message({'sender_id': os.getpid(),
-                   'receiver_id': 0,
-                   'message_class': server2device.S2D_SEND_CLASS,
-                   'message_type': server2device.S2D_SEND_CLASS.S2D_SEND_TASK_CONFIG,
-                   'message': None})
 
   for i in range(size):
     server_con, device_con = Pipe()
