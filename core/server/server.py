@@ -76,6 +76,7 @@ class Server(ServerBase):
     self.aggregators = []
     self.master_aggregators = []
     self.comms = comms
+    self.server_id = server_config['server_id']
 
   def spawn_selectors(self, num_selectors):
     """
@@ -97,7 +98,8 @@ class Server(ServerBase):
     for i in range(num_selectors):
       config = {
         'selector_id': i,
-        'devices': devices_per_selector[i]
+        'devices': devices_per_selector[i],
+        'server_id': self.server_id
       }
       self.selectors.append(Selector(selector_config=config))
 
@@ -168,6 +170,7 @@ class Server(ServerBase):
     :return: Server's config (dict)
     """
     return self.config
+
 
   def recv_messages(self):
     device_messages = []

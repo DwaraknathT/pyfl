@@ -106,3 +106,12 @@ class DeviceServerMessage(object):
   D2S_NOTIF_CLASS = DeviceServerNotifClass()
   D2S_QUERY_CLASS = DeviceServerQueryClass()
   D2S_UPDATE_CLASS = DeviceServerSendClass()
+
+
+if __name__ == '__main__':
+  D2S_NOTIF_CLASS = DeviceServerNotifClass()
+  print(dir(D2S_NOTIF_CLASS))
+  # if hasattr(ServerDeviceMessage, D2S_QUERY_CLASS):
+  #   print("Here")
+  # else:
+  #   print("else")
