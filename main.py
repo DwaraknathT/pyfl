@@ -14,8 +14,6 @@ from core.device.device import Device
 from core.server.server import Server
 from core.utils import get_logger, setup_dirs
 
-log = loguru.logger
-
 if torch.cuda.is_available():
   device = 'cuda'
   cudnn.benchmark = True
@@ -145,7 +143,6 @@ def spawn_server(comms, server_id, dataset=None):
     'run_args': args
   }
   logger.info("Spawning server with device config : {}".format(server_config))
-  log.info("Spawning server with device config : {}".format(server_config))
   server = Server(server_config,
                   comms=comms)
   server.run_server()
@@ -165,11 +162,9 @@ def spawn_device(comm, server_id, dataset):
     'optimizer': args.optim
   }
   logger.info("Spawning device with device config : {}".format(device_config))
-  log.info("Spawning device with device config : {}".format(device_config))
   device = Device(device_config=device_config,
                   comm=comm,
                   dataset=dataset)
-  exit(0)
   device.run_device()
   """
   device = Device(SimpleConvNet(),

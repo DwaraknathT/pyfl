@@ -1,4 +1,7 @@
 from abc import ABC
+from core.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class SelectorBase(ABC):
@@ -12,12 +15,12 @@ class SelectorBase(ABC):
     """
     raise NotImplementedError('Selector initializer not implemented')
 
-  def ping_coordinator(self, **kwargs):
-    """
-    Ping the coordinator to get the task info and number of devices,
-    required.
-    """
-    raise NotImplementedError('Coordinator selector interface not implemented')
+  # def ping_coordinator(self, **kwargs):
+  #   """
+  #   Ping the coordinator to get the task info and number of devices,
+  #   required.
+  #   """
+  #   raise NotImplementedError('Coordinator selector interface not implemented')
 
   def ping_devices(self, **kwargs):
     """
@@ -47,7 +50,22 @@ class Selector(SelectorBase):
   The selector registers all devices that ping it to participate in the FL task,
   but only chooses certain number of devices that coordinator
   """
+
   def __init__(self, selector_config):
-    super(Selector, self).__init__()
     self.selector_config = selector_config
-    print(len(self.selector_config['devices']))
+    print(self.selector_config['devices'])
+
+  def send_message(self,
+                   message):
+    logger.info('Sending Message {} to Device'.format(message.message_params))
+
+
+  def select_devices(self, num_selected_devices_per_selector):
+    """
+    Select the number of devices specified by the server from the pool
+    of registered devices
+    :param num_selected_devices_per_selector: Num of selected devices for the FL task
+    :return: None
+    """
+    for i, key in enumerate(self.selector_config['devices'].keys()):
+      if i < num_selected_devices_per_selector:

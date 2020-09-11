@@ -1,20 +1,19 @@
 import abc
+import copy
 from abc import ABC
 
-import loguru
-import copy
 from core.args import get_args
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
+from core.communication.message_definitions import DeviceServerNotifClass
 from core.server.selector import Selector
 from core.utils import get_logger
-
-log = loguru.logger
 
 logger = get_logger(__name__)
 device2server = DeviceServerMessage()
 server2device = ServerDeviceMessage()
 
 args = get_args()
+
 
 class ServerBase(ABC):
   """
@@ -84,7 +83,7 @@ class Server(ServerBase):
     config dict
     :return: None
     """
-    logger.info('Spawning {} no of selectors'.format(self.config['num_selectors']))
+    logger.info('Spawning {} selectors'.format(num_selectors))
     devices_per_selector = []
     curr_dict = {}
     for k, v in self.devices.items():
@@ -108,7 +107,7 @@ class Server(ServerBase):
     config dict
     :return: None
     """
-    
+
     logger.info('Spawning {} no of coordinators'.format(self.config['num_coordinators']))
     for i in range(self.config['num_coordinators']):
       config = {
@@ -174,11 +173,11 @@ class Server(ServerBase):
     device_messages = []
     for connection in self.comms:
       dev_msg = connection.recv()
-      if isinstance(dev_msg.message_class, DeviceServerMessage.D2S_NOTIF_CLASS) and (dev_msg.message_type == 1):
+      if isinstance(dev_msg.message_class, DeviceServerNotifClass) and (dev_msg.message_type == 1):
         self.devices[dev_msg.sender_id] = connection
       device_messages.append(dev_msg)
       logger.info('Message received from Device {}: {}'.format(dev_msg.message_params,
-                   dev_msg.message_params['receiver_id']))
+                                                               dev_msg.message_params['receiver_id']))
     return device_messages
 
   def run_server(self):
@@ -192,8 +191,5 @@ class Server(ServerBase):
     num_devices = len(self.devices)
     num_selectors = num_devices // args.max_devices_per_selector
     self.spawn_selectors(num_selectors)
-    exit(0)
     num_selected_devices = self.calculate_num_workers(num_devices)
-
-    
-
+    num_selected_devices_per_selector = num_selected_devices // num_selectors

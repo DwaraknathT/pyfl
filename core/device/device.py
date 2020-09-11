@@ -1,6 +1,5 @@
 import abc
 
-import loguru
 import torch
 import torch.backends.cudnn as cudnn
 
@@ -8,8 +7,6 @@ from core.communication.message import Message
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 from core.communication.message_definitions import ServerDeviceSendClass, ServerDeviceNotifClass
 from core.utils import get_logger, get_model
-
-log = loguru.logger
 
 logger = get_logger(__name__)
 device2server = DeviceServerMessage()
@@ -126,7 +123,6 @@ class Device(DeviceBase):
   def send_message(self,
                    message):
     logger.info('Sending Message {} to Server'.format(message.message_params))
-    log.info('Sending Message {} to Server'.format(message.message_params))
     self.comm.send(message)
     server_response = self.recv_message()
     return server_response
@@ -134,7 +130,6 @@ class Device(DeviceBase):
   def recv_message(self):
     message = self.comm.recv()
     logger.info('Received Message {} from Server'.format(message.message_params))
-    log.info('Received Message {} from Server'.format(message.message_params))
     return message
 
   def apply_weights(self, weights_list):
@@ -165,7 +160,6 @@ class Device(DeviceBase):
     }))
     if not (isinstance(participate_query_response.message_class, ServerDeviceNotifClass)):
       logger.error('Wrong message class used by the server')
-      log.error('Wrong message class used by the server')
       raise ValueError
     else:
       self.participate = participate_query_response.message_type
@@ -185,14 +179,12 @@ class Device(DeviceBase):
     # Check if the received message of the correct class
     if not (isinstance(task_query_response.message_class, ServerDeviceSendClass)):
       logger.error('Wrong message class used by the server')
-      log.error('Wrong message class used by the server')
       raise ValueError
     else:
       # Store the task_config in the the class attribute
       self.task_config = task_query_response.message
       if self.task_config is None:
         logger.error('Task config is None type')
-        log.error('Task config is None type')
 
     # Create the model, optimizer object to store the global weights in it
     self.build_device(self.task_config)
@@ -207,18 +199,15 @@ class Device(DeviceBase):
     }))
     if not (isinstance(model_query_response['message_class'], ServerDeviceSendClass)):
       logger.error('Wrong message class used by the server')
-      log.error('Wrong message class used by the server')
       raise ValueError
     else:
       # Store the model in the the class attribute
       weights = task_query_response.message
       if self.model is None:
         logger.error('Model not instantiated')
-        log.error('Model not instantiated')
       else:
         self.apply_weights(weights)
         logger.info('Applied global weights to local model')
-        log.info('Applied global weights to local model')
 
   def store_grads(self):
     """
@@ -251,18 +240,16 @@ class Device(DeviceBase):
 
   def execute_task(self):
     logger.info('Executing {} task'.format(self.task_config['task_name']))
-    log.info('Executing {} task'.format(self.task_config['task_name']))
     logger.info('Using task config {}'.format(self.task_config))
-    log.info('Using task config {}'.format(self.task_config))
 
   def run_device(self):
     # Setting the device to ready
     self.device_config['ready'] = 1
     logger.info("Set device_config['ready'] to 1")
-    log.info("Set device_config['ready'] to 1")
     # Ping the server to get task config and global weights to
     # start the task
     self.ping_server()
+    exit(0)
     self.execute_task()
 
   def update_model(self):
