@@ -2,8 +2,8 @@ import abc
 from abc import ABC
 
 import loguru
-
-from args import get_args
+import copy
+from core.args import get_args
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 from core.server.selector import Selector
 from core.utils import get_logger
@@ -71,7 +71,7 @@ class Server(ServerBase):
                server_config,
                comms):
     self.config = server_config
-    self.devices = []
+    self.devices = {}
     self.coordinators = []
     self.selectors = []
     self.aggregators = []
@@ -80,18 +80,25 @@ class Server(ServerBase):
 
   def spawn_selectors(self, num_selectors):
     """
-    Spawns the number of selectors mentioned in the server
+    Spawns the number of selectors ( a pre-determined constant) mentioned in the server
     config dict
     :return: None
     """
     logger.info('Spawning {} no of selectors'.format(self.config['num_selectors']))
+    devices_per_selector = []
+    curr_dict = {}
+    for k, v in self.devices.items():
+      if len(curr_dict.keys()) < args.max_devices_per_selector:
+        curr_dict.update({k: v})
+      else:
+        devices_per_selector.append(copy.deepcopy(curr_dict))
+        curr_dict = {k: v}
+    # update last curr_dict
+    devices_per_selector.append(curr_dict)
     for i in range(num_selectors):
       config = {
         'selector_id': i,
-        'total_population': 0,
-        'total_population_ids': [],
-        'selected_population': 0,
-        'selected_population_ids': []
+        'devices': devices_per_selector[i]
       }
       self.selectors.append(Selector(selector_config=config))
 
@@ -147,6 +154,15 @@ class Server(ServerBase):
       }
       self.master_aggregators.append(Selector(selector_config=config))
 
+  def calculate_num_workers(self, num_devices):
+    """
+    Returns the total number of devices required per FL task
+    :param num_devices: Total number of devices registered in a given round
+    :return: num_devices_for_task
+    """
+    num_devices_for_task = num_devices
+    return num_devices_for_task
+
   def get_config(self):
     """
     Returns the config file of this server
@@ -158,6 +174,8 @@ class Server(ServerBase):
     device_messages = []
     for connection in self.comms:
       dev_msg = connection.recv()
+      if isinstance(dev_msg.message_class, DeviceServerMessage.D2S_NOTIF_CLASS) and (dev_msg.message_type == 1):
+        self.devices[dev_msg.sender_id] = connection
       device_messages.append(dev_msg)
       logger.info('Message received from Device {}: {}'.format(dev_msg.message_params,
                    dev_msg.message_params['receiver_id']))
@@ -165,18 +183,17 @@ class Server(ServerBase):
 
   def run_server(self):
     # spawn all related stuff
-    self.spawn_selectors()
-    self.spawn_coordinators()
-    self.spawn_aggregators()
-    self.spawn_master_aggregators()
+    # self.spawn_selectors()
+    # self.spawn_coordinators()
+    # self.spawn_aggregators()
+    # self.spawn_master_aggregators()
 
     device_participation_messages = self.recv_messages()
-
-    for msg in device_participation_messages:
-      if isinstance(msg.message_class, DeviceServerMessage.D2S_NOTIF_CLASS) and (msg.message_type==1):
-        self.devices.append(msg.sender_id)
     num_devices = len(self.devices)
     num_selectors = num_devices // args.max_devices_per_selector
     self.spawn_selectors(num_selectors)
+    exit(0)
+    num_selected_devices = self.calculate_num_workers(num_devices)
+
     
 

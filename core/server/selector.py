@@ -40,9 +40,7 @@ class Selector(SelectorBase):
   #TODO: Add support for dropout
   What is Selector config ? A dict with the following params:
   selector_id : A unique identifier for each selector
-  selected_population : Total number of devices determined chosen or a given FL task (int)
-  max_devices_per_selector : Maximum number of devices per selector
-  selected_devices : dict corresponding to the devices selected for a given FL task
+  devices : dict corresponding to the devices selected for a given FL task
     device_id : device_ids of the devices
     device_comm: Communicator objects 
 
@@ -52,4 +50,4 @@ class Selector(SelectorBase):
   def __init__(self, selector_config):
     super(Selector, self).__init__()
     self.selector_config = selector_config
-
+    print(len(self.selector_config['devices']))
