@@ -1,4 +1,5 @@
 import errno
+import inspect
 import logging
 import os
 import sys
@@ -33,8 +34,8 @@ def get_logger(logger_name):
   logger = logging.getLogger(logger_name)
   logger.setLevel(logging.DEBUG)  # better to have too much log than not enough
   logger.addHandler(get_console_handler())
-  #TODO: Remove this commented part
-  #logger.addHandler(get_file_handler(logger_name))
+  # TODO: Remove this commented part
+  # logger.addHandler(get_file_handler(logger_name))
   # with this pattern, it's rarely necessary to propagate the error up to parent
   logger.propagate = False
   return logger
@@ -71,3 +72,18 @@ def get_model(task_config):
     raise NotImplementedError("Optimizer not implemented")
 
   return model, optim
+
+
+def Public(name):
+  return not name.startswith('__')
+
+
+def Attributes(ob):
+  # Exclude methods.
+  attributes = inspect.getmembers(ob, lambda member: not inspect.ismethod(member))
+  # Exclude 'internal' names.
+  publicAttributes = filter(lambda desc: Public(desc[0]), attributes)
+  list_attributes = ()
+  for x in publicAttributes:
+    list_attributes += (type(x[1]),)
+  return list_attributes

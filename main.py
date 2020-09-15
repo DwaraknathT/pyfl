@@ -35,7 +35,7 @@ class Coordinator:
     print("The number of batches per device {}".format(dataset_size // i))
 
 
-def spawn_server(comm, communicator, server_id, dataset=None):
+def spawn_server(communicator, server_id, dataset=None):
   server_id.acquire()
   server_id.value = os.getpid()
   server_id.release()
@@ -51,12 +51,11 @@ def spawn_server(comm, communicator, server_id, dataset=None):
   }
   logger.info("Spawning server with device config : {}".format(server_config))
   server = Server(server_config,
-                  comms=comm)
+                  communicator=communicator)
   server.run_server()
-  # serv.run(comms)
 
 
-def spawn_device(comm, communicator, server_id, dataset):
+def spawn_device(communicator, server_id, dataset):
   device_config = {
     'device_id': os.getpid(),
     'server_id': server_id,
@@ -69,30 +68,23 @@ def spawn_device(comm, communicator, server_id, dataset):
     'optimizer': args.optim
   }
   logger.info("Spawning device with device config : {}".format(device_config))
-  communicator.register(device_config['device_id'], server_id, comm)
+  communicator.register(device_config['device_id'], server_id)
   device = Device(device_config=device_config,
-                  comm=comm,
-                  dataset=dataset)
+                  dataset=dataset,
+                  communicator=communicator)
   device.run_device()
-  """
-  device = Device(SimpleConvNet(),
-                  dataset,
-                  {'lr': 0.01})
-  device.run()
-  """
 
-
-def run(rank, size, communicator, fn, comms, server_id):
+def run(rank, communicator, fn, server_id):
   if rank != 0:
     dataset = {}
     dataset['trainset'], dataset['testset'] = get_data(args)
-    fn(comms, communicator, server_id.value, dataset)
+    fn(communicator, server_id.value, dataset)
   else:
-    fn(comms, communicator, server_id)
+    fn(communicator, server_id)
 
 
 def init_process(rank, size, communicator,
-                 fn, comms, server_id=None, backend='gloo'):
+                 fn, server_id=None, backend='gloo'):
   """ Initialize the distributed environment. """
   os.environ['MASTER_ADDR'] = '127.0.0.1'
   os.environ['MASTER_PORT'] = '29500'
@@ -100,31 +92,25 @@ def init_process(rank, size, communicator,
   logger.info("MASTER_PORT : {}".format(os.environ['MASTER_PORT']))
   dist.init_process_group(backend, rank=rank, world_size=size)
 
-  run(rank, size,communicator, fn, comms, server_id)
+  run(rank, communicator, fn, server_id)
 
 
 if __name__ == "__main__":
   mp.set_start_method('spawn')
   SERVER_ID = Value('i', 0)
   processes = []
-  server_comm = []
-  device_comm = []
   logger.info('Run arguments::{}'.format(vars(args)))
   size = args.num_devices
 
   communicator = Communicator()
-  for i in range(size):
-
-    server_comm.append(server_con)
-    device_comm.append(device_con)
   for i in range(size + 1):
     if i == 0:
       p = Process(target=init_process, args=(i, (size + 1), communicator,
-                                             spawn_server, server_comm,
+                                             spawn_server,
                                              SERVER_ID))
     else:
       p = Process(target=init_process, args=(i, (size + 1), communicator,
-                                             spawn_device, device_comm[i - 1],
+                                             spawn_device,
                                              SERVER_ID))
     p.start()
     processes.append(p)

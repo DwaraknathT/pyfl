@@ -3,11 +3,13 @@ import copy
 from abc import ABC
 
 from core.args import get_args
+from core.communication.communicator import Communicator
 from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 from core.communication.message_definitions import DeviceServerNotifClass
-from core.server.selector import Selector
+#from core.server.selector import Selector
 from core.utils import get_logger
-
+import loguru
+log = loguru.logger
 logger = get_logger(__name__)
 device2server = DeviceServerMessage()
 server2device = ServerDeviceMessage()
@@ -68,15 +70,14 @@ class Server(ServerBase):
 
   def __init__(self,
                server_config,
-               comms):
+               communicator):
     self.config = server_config
     self.devices = {}
     self.coordinators = []
     self.selectors = []
     self.aggregators = []
     self.master_aggregators = []
-    self.comms = comms
-    self.server_id = server_config['server_id']
+    self.communicator = communicator
 
   def spawn_selectors(self, num_selectors):
     """
@@ -99,7 +100,7 @@ class Server(ServerBase):
       config = {
         'selector_id': i,
         'devices': devices_per_selector[i],
-        'server_id': self.server_id
+        'server_id': self.config['server_id']
       }
       self.selectors.append(Selector(selector_config=config))
 
@@ -172,17 +173,6 @@ class Server(ServerBase):
     return self.config
 
 
-  def recv_messages(self):
-    device_messages = []
-    for connection in self.comms:
-      dev_msg = connection.recv()
-      if isinstance(dev_msg.message_class, DeviceServerNotifClass) and (dev_msg.message_type == 1):
-        self.devices[dev_msg.sender_id] = connection
-      device_messages.append(dev_msg)
-      logger.info('Message received from Device {}: {}'.format(dev_msg.message_params,
-                                                               dev_msg.message_params['receiver_id']))
-    return device_messages
-
   def run_server(self):
     # spawn all related stuff
     # self.spawn_selectors()
@@ -190,7 +180,9 @@ class Server(ServerBase):
     # self.spawn_aggregators()
     # self.spawn_master_aggregators()
 
-    device_participation_messages = self.recv_messages()
+    device_participation_messages = self.communicator.recv_message(self.config['server_id'])
+    log.debug(device_participation_messages)
+    exit(0)
     num_devices = len(self.devices)
     num_selectors = num_devices // args.max_devices_per_selector
     self.spawn_selectors(num_selectors)
