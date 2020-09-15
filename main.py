@@ -6,13 +6,13 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.multiprocessing import Process, Pipe, Value
 
-from core.args import get_args
-from core.communication.communicator import Communicator
-from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
-from core.datasets import get_data
-from core.device.device import Device
-from core.server.server import Server
-from core.utils import get_logger, setup_dirs
+from pyfl.args import get_args
+from pyfl.communication.communicator import Communicator
+from pyfl.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
+from pyfl.datasets import get_data
+from pyfl.device.device import Device
+from pyfl.server.server import Server
+from pyfl.utils import get_logger, setup_dirs
 
 if torch.cuda.is_available():
   device = 'cuda'

@@ -2,12 +2,12 @@ import abc
 import copy
 from abc import ABC
 
-from core.args import get_args
-from core.communication.communicator import Communicator
-from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
-from core.communication.message_definitions import DeviceServerNotifClass
-#from core.server.selector import Selector
-from core.utils import get_logger
+from pyfl.args import get_args
+from pyfl.communication.communicator import Communicator
+from pyfl.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
+from pyfl.communication.message_definitions import DeviceServerNotifClass
+#from pyfl.server.selector import Selector
+from pyfl.utils import get_logger
 import loguru
 log = loguru.logger
 logger = get_logger(__name__)

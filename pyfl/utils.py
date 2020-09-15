@@ -7,9 +7,9 @@ from logging.handlers import RotatingFileHandler
 
 import torch
 
-from core.models.lenet import LeNet, SimpleConvNet
-from core.models.resnet import resnet20
-from core.models.vgg import vgg11, vgg11_bn
+from pyfl.models.lenet import LeNet, SimpleConvNet
+from pyfl.models.resnet import resnet20
+from pyfl.models.vgg import vgg11, vgg11_bn
 
 FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(process)d - %(levelname)s - %(message)s",
                               datefmt='%m/%d/%Y %I:%M:%S %p')

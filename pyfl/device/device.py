@@ -3,11 +3,11 @@ import abc
 import torch
 import torch.backends.cudnn as cudnn
 
-from core.communication.message import Message
-from core.communication.communicator import Communicator
-from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
-from core.communication.message_definitions import ServerDeviceSendClass, ServerDeviceNotifClass
-from core.utils import get_logger, get_model
+from pyfl.communication.message import Message
+from pyfl.communication.communicator import Communicator
+from pyfl.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
+from pyfl.communication.message_definitions import ServerDeviceSendClass, ServerDeviceNotifClass
+from pyfl.utils import get_logger, get_model
 
 logger = get_logger(__name__)
 device2server = DeviceServerMessage()

@@ -1,9 +1,9 @@
 from abc import ABC
 
-from core.communication.message import Message
-from core.communication.message_definitions import ServerDeviceMessage, DeviceServerSendClass
-from core.communication.message_definitions import ServerDeviceQueryClass, ServerDeviceNotifClass,
-from core.utils import get_logger
+from pyfl.communication.message import Message
+from pyfl.communication.message_definitions import ServerDeviceMessage, DeviceServerSendClass
+from pyfl.communication.message_definitions import ServerDeviceQueryClass, ServerDeviceNotifClass,
+from pyfl.utils import get_logger
 
 logger = get_logger(__name__)
 server2device = ServerDeviceMessage()
