@@ -4,7 +4,7 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from torch.multiprocessing import Process, Pipe, Value
+from torch.multiprocessing import Process, Value
 
 from pyfl.args import get_args
 from pyfl.communication.communicator import Communicator

@@ -11,6 +11,8 @@ from pyfl.models.lenet import LeNet, SimpleConvNet
 from pyfl.models.resnet import resnet20
 from pyfl.models.vgg import vgg11, vgg11_bn
 
+from pyfl.communication.message_definitions import ServerDeviceMessage, DeviceServerMessage
+
 FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(process)d - %(levelname)s - %(message)s",
                               datefmt='%m/%d/%Y %I:%M:%S %p')
 
@@ -74,6 +76,7 @@ def get_model(task_config):
   return model, optim
 
 
+# Excludes 'internal' names (start with '__').
 def Public(name):
   return not name.startswith('__')
 
@@ -83,7 +86,16 @@ def Attributes(ob):
   attributes = inspect.getmembers(ob, lambda member: not inspect.ismethod(member))
   # Exclude 'internal' names.
   publicAttributes = filter(lambda desc: Public(desc[0]), attributes)
-  list_attributes = ()
-  for x in publicAttributes:
-    list_attributes += (type(x[1]),)
-  return list_attributes
+  attribute_list = [type(x[1]) for x in publicAttributes]
+  return tuple(attribute_list)
+
+def message_class_type(message_object, message_class):
+  return_var = False
+  if message_class == 'server':
+    if isinstance(message_object.message_class,Attributes(ServerDeviceMessage)):
+      return_var = True
+  if message_class == 'device':
+    if isinstance(message_object.message_class, Attributes(DeviceServerMessage)):
+      return_var = True
+  return return_var
+

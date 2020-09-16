@@ -1,7 +1,8 @@
 """
 Message interfaces between various actors
 """
-
+import inspect
+import types
 
 class DeviceServerNotifClass(object):
   """
@@ -106,13 +107,3 @@ class DeviceServerMessage(object):
   D2S_NOTIF_CLASS = DeviceServerNotifClass()
   D2S_QUERY_CLASS = DeviceServerQueryClass()
   D2S_UPDATE_CLASS = DeviceServerSendClass()
-
-
-
-
-if __name__ == '__main__':
-  S2D_NOTIF_CLASS = ServerDeviceNotifClass()
-  if isinstance(S2D_NOTIF_CLASS, Attributes(DeviceServerMessage)):
-    print("done")
-  else:
-    print("not yet")

@@ -2,7 +2,7 @@ from abc import ABC
 
 from pyfl.communication.message import Message
 from pyfl.communication.message_definitions import ServerDeviceMessage, DeviceServerSendClass
-from pyfl.communication.message_definitions import ServerDeviceQueryClass, ServerDeviceNotifClass,
+from pyfl.communication.message_definitions import ServerDeviceQueryClass, ServerDeviceNotifClass
 from pyfl.utils import get_logger
 
 logger = get_logger(__name__)
@@ -81,6 +81,6 @@ class Selector(SelectorBase):
           'sender_id': self.selector_config['server_id'],
           'receiver_id': self.selected_devices['device_id'],
           'message_class': server2device.D2S_NOTIF_CLASS,
-          'message_type': server2device.D2S_NOTIF_CLASS.S2D_SELECTED
+          'message_type': server2device.D2S_NOTIF_CLASS.S2D_SELECTED,
           'message': None
         }))
