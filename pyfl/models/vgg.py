@@ -4,7 +4,8 @@ Modified from https://github.com/pytorch/vision.git
 import math
 
 import torch.nn as nn
-from core.models.layers import MaskedConv, MaskedDense
+
+from pyfl.models.layers import MaskedConv, MaskedDense
 
 __all__ = [
   'VGG', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',

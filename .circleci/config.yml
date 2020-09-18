@@ -10,4 +10,4 @@ jobs:
           command: |
             sudo apt-get install python3-pip
             sudo pip3 install -Ur requirements.txt
-            echo 'Hello world'
+            py.test

@@ -1,6 +1,8 @@
 """
 Message interfaces between various actors
 """
+import inspect
+import types
 
 
 class DeviceServerNotifClass(object):

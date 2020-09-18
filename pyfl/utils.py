@@ -1,4 +1,5 @@
 import errno
+import inspect
 import logging
 import os
 import sys
@@ -6,9 +7,10 @@ from logging.handlers import RotatingFileHandler
 
 import torch
 
-from core.models.lenet import LeNet, SimpleConvNet
-from core.models.resnet import resnet20
-from core.models.vgg import vgg11, vgg11_bn
+from pyfl.communication.message_definitions import ServerDeviceMessage, DeviceServerMessage
+from pyfl.models.lenet import LeNet, SimpleConvNet
+from pyfl.models.resnet import resnet20
+from pyfl.models.vgg import vgg11, vgg11_bn
 
 FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(process)d - %(levelname)s - %(message)s",
                               datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -33,7 +35,8 @@ def get_logger(logger_name):
   logger = logging.getLogger(logger_name)
   logger.setLevel(logging.DEBUG)  # better to have too much log than not enough
   logger.addHandler(get_console_handler())
-  logger.addHandler(get_file_handler(logger_name))
+  # TODO: Remove this commented part
+  # logger.addHandler(get_file_handler(logger_name))
   # with this pattern, it's rarely necessary to propagate the error up to parent
   logger.propagate = False
   return logger
@@ -62,11 +65,36 @@ def get_model(task_config):
   else:
     raise NotImplementedError("Model not supported")
 
-  if task_config['optim'] == 'sgd':
+  if task_config['optimizer'] == 'sgd':
     optim = torch.optim.sgd()
-  elif task_config['optim'] == 'adam':
+  elif task_config['optimizer'] == 'adam':
     optim = torch.optim.adam()
   else:
     raise NotImplementedError("Optimizer not implemented")
 
   return model, optim
+
+
+# Excludes 'internal' names (start with '__').
+def Public(name):
+  return not name.startswith('__')
+
+
+def Attributes(ob):
+  # Exclude methods.
+  attributes = inspect.getmembers(ob, lambda member: not inspect.ismethod(member))
+  # Exclude 'internal' names.
+  publicAttributes = filter(lambda desc: Public(desc[0]), attributes)
+  attribute_list = [type(x[1]) for x in publicAttributes]
+  return tuple(attribute_list)
+
+
+def message_class_type(message_object, message_class):
+  return_var = False
+  if message_class == 'server':
+    if isinstance(message_object.message_class, Attributes(ServerDeviceMessage)):
+      return_var = True
+  if message_class == 'device':
+    if isinstance(message_object.message_class, Attributes(DeviceServerMessage)):
+      return_var = True
+  return return_var

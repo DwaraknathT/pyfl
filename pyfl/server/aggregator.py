@@ -62,3 +62,13 @@ class AggregatorBase(ABC):
     they are in sync.
     """
     raise NotImplementedError('Sync devices connected to this aggregator')
+
+
+class Aggregator(AggregatorBase):
+  def __init__(self, config):
+    self.config = config
+
+
+class MasterAggregator(MasterAggregatorBase):
+  def __init__(self, config):
+    self.config = config

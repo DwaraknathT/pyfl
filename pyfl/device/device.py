@@ -3,9 +3,11 @@ import abc
 import torch
 import torch.backends.cudnn as cudnn
 
-from core.communication.message import Message
-from core.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
-from core.utils import get_logger, get_model
+from pyfl.communication.communicator import Communicator
+from pyfl.communication.message import Message
+from pyfl.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
+from pyfl.communication.message_definitions import ServerDeviceSendClass, ServerDeviceNotifClass
+from pyfl.utils import get_logger, get_model
 
 logger = get_logger(__name__)
 device2server = DeviceServerMessage()
@@ -68,6 +70,7 @@ class Device(DeviceBase):
 
   What is Device config ? A dict with the following params:
   * Device id : A unique identifier for each device
+  * Server id: A unique identifier for the server
   * Ready : Is the device ready to participate
     0 : Ready to participate
     1 : Not ready to participate
@@ -105,12 +108,12 @@ class Device(DeviceBase):
   we set participate var to 1. If the request is rejected we set it to 0
   """
 
-  def __init__(self, device_config, comm, dataset):
+  def __init__(self, device_config, dataset, communicator):
     self.device_config = device_config
     self.dataset = dataset
     self.model = None
     self.optimizer = None
-    self.comm = comm
+    self.communicator = communicator
     self.lr_scheduler = None
     self.participate = False
     self.task_config = None
@@ -119,18 +122,17 @@ class Device(DeviceBase):
   def build_device(self, task_config):
     self.model, self.optimizer = get_model(task_config)
 
-  def send_message(self,
-                   message):
-    logger.info('Sending Message {} to Server'.format(message))
-    self.comm.send(message)
-    server_response = self.recv_message()
-    return server_response
-
-  def recv_message(self):
-    message = None
-    if self.comm.poll():
-      message = self.comm.recv()
-    return message
+  # def send_message(self,
+  #                  message):
+  #   logger.info('Sending Message {} to Server'.format(message.message_params))
+  #   self.comm.send(message)
+  #   server_response = self.recv_message()
+  #   return server_response
+  #
+  # def recv_message(self):
+  #   message = self.comm.recv()
+  #   logger.info('Received Message {} from Server'.format(message.message_params))
+  #   return message
 
   def apply_weights(self, weights_list):
     count = 0
@@ -149,17 +151,22 @@ class Device(DeviceBase):
     3. Ask the server for global model weights (build the model, optim objects based on task config)
     :return:
     """
-    participate_query_response = self.send_message(Message({
-      'sender_id': self.device_config['device_id'],
-      'receiver_id': self.device_config['server_id'],
-      'message_class': device2server.D2S_NOTIF_CLASS,
-      'message_type': device2server.D2S_NOTIF_CLASS.D2S_READY if
-      self.device_config['ready']
-      else device2server.D2S_NOTIF_CLASS.D2S_NOT_READY,
-      'message': None
-    }))
-
-    if not (isinstance(participate_query_response['message_class'], server2device.S2D_NOTIF_CLASS)):
+    # participate_query_response = self.send_message(Message({
+    #   'sender_id': self.device_config['device_id'],
+    #   'receiver_id': self.device_config['server_id'],
+    #   'message_class': device2server.D2S_NOTIF_CLASS,
+    #   'message_type': device2server.D2S_NOTIF_CLASS.D2S_READY if
+    #   self.device_config['ready']
+    #   else device2server.D2S_NOTIF_CLASS.D2S_NOT_READY,
+    #   'message': None
+    # }))
+    self.communicator.send_message(self.device_config['device_id'],
+                                   self.device_config['server_id'],
+                                   device2server.D2S_NOTIF_CLASS,
+                                   device2server.D2S_NOTIF_CLASS.D2S_READY,
+                                   None)
+    exit(0)
+    if not (isinstance(participate_query_response.message_class, ServerDeviceNotifClass)):
       logger.error('Wrong message class used by the server')
       raise ValueError
     else:
@@ -178,7 +185,7 @@ class Device(DeviceBase):
       'message': None
     }))
     # Check if the received message of the correct class
-    if not (isinstance(task_query_response['message_class'], server2device.S2D_SEND_CLASS)):
+    if not (isinstance(task_query_response.message_class, ServerDeviceSendClass)):
       logger.error('Wrong message class used by the server')
       raise ValueError
     else:
@@ -198,7 +205,7 @@ class Device(DeviceBase):
       'message_type': device2server.D2S_QUERY_CLASS.D2S_QUERY_GLOBAL_MODEL,
       'message': None
     }))
-    if not (isinstance(model_query_response['message_class'], server2device.S2D_SEND_CLASS)):
+    if not (isinstance(model_query_response['message_class'], ServerDeviceSendClass)):
       logger.error('Wrong message class used by the server')
       raise ValueError
     else:
@@ -242,20 +249,16 @@ class Device(DeviceBase):
   def execute_task(self):
     logger.info('Executing {} task'.format(self.task_config['task_name']))
     logger.info('Using task config {}'.format(self.task_config))
-    if batch_idx % 100 == 0:
-      print('Train batch: {} Loss: {:.4f} Accuracy: {:.0f}%'.format(
-        batch_idx, loss.item(), 100. * correct / len(self.dataset['testset'].dataset)))
 
+  def run_device(self):
+    # Setting the device to ready
+    self.device_config['ready'] = 1
+    logger.info("Set device_config['ready'] to 1")
+    # Ping the server to get task config and global weights to
+    # start the task
+    self.ping_server()
+    exit(0)
+    self.execute_task()
 
-def run_device(self):
-  # Setting the device to ready
-  self.device_config['ready'] = 1
-  logger.info("Set device_config['ready'] to 1")
-  # Ping the server to get task config and global weights to
-  # start the task
-  self.ping_server()
-  self.execute_task()
-
-
-def update_model(self):
-  print('updating local model')
+  def update_model(self):
+    print('updating local model')
