@@ -8,6 +8,7 @@ from pyfl.utils import get_logger
 logger = get_logger(__name__)
 server2device = ServerDeviceMessage()
 
+
 class SelectorBase(ABC):
   """
   Selector abstract base class

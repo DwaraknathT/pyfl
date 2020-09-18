@@ -2,13 +2,15 @@ import abc
 import copy
 from abc import ABC
 
+import loguru
+
 from pyfl.args import get_args
 from pyfl.communication.communicator import Communicator
 from pyfl.communication.message_definitions import DeviceServerMessage, ServerDeviceMessage
 from pyfl.communication.message_definitions import DeviceServerNotifClass
-#from pyfl.server.selector import Selector
+# from pyfl.server.selector import Selector
 from pyfl.utils import get_logger
-import loguru
+
 log = loguru.logger
 logger = get_logger(__name__)
 device2server = DeviceServerMessage()
@@ -171,7 +173,6 @@ class Server(ServerBase):
     :return: Server's config (dict)
     """
     return self.config
-
 
   def run_server(self):
     # spawn all related stuff

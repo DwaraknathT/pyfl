@@ -4,6 +4,7 @@ Modified from https://github.com/pytorch/vision.git
 import math
 
 import torch.nn as nn
+
 from pyfl.models.layers import MaskedConv, MaskedDense
 
 __all__ = [

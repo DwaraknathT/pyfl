@@ -57,9 +57,9 @@ class Coordinator(CoordinatorBase):
   num_devices_per_aggregator: Maximum limit to the number of devices an aggregator handles
   num_aggregators: decided based on total_num_devices and num_devices_per_aggregator
   """
+
   def __init__(self, coordinator_config):
     self.config = coordinator_config
-
 
   def init_task_config(self):
     """

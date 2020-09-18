@@ -25,6 +25,7 @@ parser.add_argument(
 parser.add_argument(
   '--max_devices_per_selector', default=2, type=int, help='Maximum number of devices per selector')
 
+
 def get_args():
   args = parser.parse_args()
 

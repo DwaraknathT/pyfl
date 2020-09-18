@@ -7,11 +7,10 @@ from logging.handlers import RotatingFileHandler
 
 import torch
 
+from pyfl.communication.message_definitions import ServerDeviceMessage, DeviceServerMessage
 from pyfl.models.lenet import LeNet, SimpleConvNet
 from pyfl.models.resnet import resnet20
 from pyfl.models.vgg import vgg11, vgg11_bn
-
-from pyfl.communication.message_definitions import ServerDeviceMessage, DeviceServerMessage
 
 FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(process)d - %(levelname)s - %(message)s",
                               datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -89,13 +88,13 @@ def Attributes(ob):
   attribute_list = [type(x[1]) for x in publicAttributes]
   return tuple(attribute_list)
 
+
 def message_class_type(message_object, message_class):
   return_var = False
   if message_class == 'server':
-    if isinstance(message_object.message_class,Attributes(ServerDeviceMessage)):
+    if isinstance(message_object.message_class, Attributes(ServerDeviceMessage)):
       return_var = True
   if message_class == 'device':
     if isinstance(message_object.message_class, Attributes(DeviceServerMessage)):
       return_var = True
   return return_var
-

@@ -4,6 +4,7 @@ Message interfaces between various actors
 import inspect
 import types
 
+
 class DeviceServerNotifClass(object):
   """
   0 : Not Ready for participation

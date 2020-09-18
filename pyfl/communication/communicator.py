@@ -1,5 +1,6 @@
 import loguru
 from torch.multiprocessing import Pipe
+
 from pyfl.communication.message import Message
 
 log = loguru.logger
@@ -60,6 +61,3 @@ class Communicator:
       if comm.poll(0.001):
         messages.append(comm.recv())
     return messages
-
-
-

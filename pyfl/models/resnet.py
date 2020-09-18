@@ -135,4 +135,3 @@ def resnet110(num_classes):
 
 def resnet1202(num_classes):
   return ResNet(BasicBlock, [200, 200, 200], num_clases=num_classes)
-
